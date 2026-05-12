@@ -1,0 +1,129 @@
+/**
+ * Shared Wrangler config for Synch API deployments.
+ *
+ * Top-level bindings are the public self-hosted deployment used by Deploy to
+ * Cloudflare. They omit generated resource IDs so Cloudflare can provision
+ * resources for first-time setup flows.
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "synch-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-04-14",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"migrations": [
+		{
+			"new_sqlite_classes": [
+				"SyncCoordinator"
+			],
+			"tag": "v1"
+		}
+	],
+	"assets": {
+		"directory": "./public",
+		"html_handling": "drop-trailing-slash",
+		"not_found_handling": "none"
+	},
+	"upload_source_maps": true,
+	"rules": [
+		{
+			"type": "Text",
+			"globs": [
+				"**/*.sql"
+			],
+			"fallthrough": true
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "SyncCoordinator",
+				"name": "SYNC_COORDINATOR"
+			}
+		]
+	},
+	"r2_buckets": [
+		{
+			"binding": "SYNC_BLOBS",
+			"bucket_name": "synch-bucket","preview_bucket_name": "synch-bucket"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "synch-db",
+			"migrations_dir": "drizzle","database_id": "36737fe5-4604-4d78-a815-29a3d51eccd6"
+		}
+	],
+	"vars": {
+		"SYNC_TOKEN_TTL_SECONDS": 120,
+		"SELF_HOSTED": true
+	},
+	"env": {
+		"managed": {
+			"durable_objects": {
+				"bindings": [
+					{
+						"class_name": "SyncCoordinator",
+						"name": "SYNC_COORDINATOR"
+					}
+				]
+			},
+			"r2_buckets": [
+				{
+					"binding": "SYNC_BLOBS",
+					"bucket_name": "synch-bucket"
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "synch-db",
+					"database_id": "3d5d180d-3fa2-4489-8433-265fb596ee97",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"queues": {
+				"producers": [
+					{
+						"binding": "VAULT_PURGE_QUEUE",
+						"queue": "synch-vault-purge"
+					},
+					{
+						"binding": "POLICY_REFRESH_QUEUE",
+						"queue": "synch-policy-refresh"
+					}
+				],
+				"consumers": [
+					{
+						"queue": "synch-vault-purge",
+						"max_batch_size": 1,
+						"max_batch_timeout": 0,
+						"max_retries": 3
+					},
+					{
+						"queue": "synch-policy-refresh",
+						"max_batch_size": 1,
+						"max_batch_timeout": 0,
+						"max_retries": 5
+					}
+				]
+			},
+			"send_email": [
+				{
+					"name": "EMAIL"
+				}
+			],
+			"vars": {
+				"SYNC_TOKEN_TTL_SECONDS": 120,
+				"SELF_HOSTED": false,
+				"WWW_BASE_URL": "https://synch.run"
+			},
+			"observability": {
+				"enabled": true,
+			}
+		}
+	}
+}

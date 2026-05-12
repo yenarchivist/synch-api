@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1777508783536,
+      "tag": "0000_previous_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777552069004,
+      "tag": "0001_tense_blacklash",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1777595361511,
+      "tag": "0002_woozy_colleen_wing",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1777596204330,
+      "tag": "0003_rapid_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777716701805,
+      "tag": "0004_broad_jack_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1777722425613,
+      "tag": "0005_clever_killer_shrike",
+      "breakpoints": true
+    }
+  ]
+}

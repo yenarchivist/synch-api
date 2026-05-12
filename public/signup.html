@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Sign Up - Synch</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<style>
+			/* Mimic the selection colors from Layout.astro */
+			::selection {
+				background-color: #27272a;
+				color: #e4e4e7;
+			}
+		</style>
+	</head>
+	<body class="bg-[#0a0a0a] text-zinc-400 font-sans antialiased min-h-screen flex flex-col text-sm">
+		<div class="max-w-md mx-auto px-6 w-full flex-1 flex flex-col justify-center py-24">
+			<div class="mb-8 text-center">
+				<a href="/" class="text-zinc-200 font-normal tracking-wider text-xs uppercase hover:opacity-80 transition-opacity inline-block mb-8">Synch</a>
+				<h1 class="text-2xl text-zinc-200 tracking-tight mb-2" data-i18n="title">Create an account</h1>
+				<p class="text-zinc-500 text-xs" data-i18n="subtitle">Your vault stays end-to-end encrypted. This account only coordinates sync.</p>
+			</div>
+
+			<form id="sign-up-form" class="space-y-4">
+				<div class="space-y-2">
+					<label for="name" class="block text-xs text-zinc-400" data-i18n="name">Name</label>
+					<input type="text" id="name" name="name" required autocomplete="name" class="w-full bg-zinc-900/50 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors" placeholder="John Doe" />
+				</div>
+
+				<div class="space-y-2">
+					<label for="email" class="block text-xs text-zinc-400" data-i18n="email">Email</label>
+					<input type="email" id="email" name="email" required autocomplete="email" class="w-full bg-zinc-900/50 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors" placeholder="you@example.com" />
+				</div>
+				
+				<div class="space-y-2">
+					<label for="password" class="block text-xs text-zinc-400" data-i18n="password">Password</label>
+					<input type="password" id="password" name="password" required autocomplete="new-password" class="w-full bg-zinc-900/50 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors" placeholder="••••••••" />
+				</div>
+
+				<div id="status" class="text-zinc-400 text-xs text-center min-h-6" aria-live="polite"></div>
+
+				<button type="submit" class="w-full py-2 px-4 mt-4 text-center text-xs bg-zinc-200 text-[#0a0a0a] hover:bg-white rounded transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed" data-i18n="submit">
+					Create Account
+				</button>
+
+				<div id="success-container" class="hidden mt-6 p-4 bg-zinc-900/50 border border-zinc-800/80 rounded-lg text-center flex-col items-center">
+					<div class="text-zinc-200 text-sm mb-1" data-i18n="checkEmail">Check your email</div>
+					<div class="text-zinc-400 text-xs mb-4"><span data-i18n="sentPrefix">We've sent a verification link to</span> <span id="sent-email-display" class="font-medium text-zinc-300"></span><span data-i18n="sentSuffix">.</span></div>
+					
+					<div id="resend-container" class="text-center flex-col items-center w-full">
+						<button id="resend-button" type="button" class="text-xs text-zinc-300 hover:text-white underline transition-colors disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed" data-i18n="resendVerification">
+							Resend verification email
+						</button>
+						<div id="resend-message" class="text-xs mt-2 text-zinc-400 hidden"></div>
+					</div>
+				</div>
+			</form>
+
+			<div class="mt-8 text-center text-xs text-zinc-500">
+				<span data-i18n="hasAccount">Already have an account?</span> <a id="signin-link" href="/signin" class="text-zinc-300 hover:text-zinc-100 transition-colors" data-i18n="signIn">Sign in</a>
+			</div>
+		</div>
+
+		<script>
+			const messages = {
+				en: {
+					title: "Create an account",
+					subtitle: "Your vault stays end-to-end encrypted. This account only coordinates sync.",
+					name: "Name",
+					email: "Email",
+					password: "Password",
+					submit: "Create Account",
+					checkEmail: "Check your email",
+					sentPrefix: "We've sent a verification link to",
+					sentSuffix: ".",
+					resendVerification: "Resend verification email",
+					hasAccount: "Already have an account?",
+					signIn: "Sign in",
+					resendAvailableIn: "Resend available in {seconds}s",
+					sending: "Sending...",
+					failedToResend: "Failed to resend",
+					resent: "Verification email resent.",
+					apiUnavailable: "Unable to reach the API.",
+					apiUnavailableWithHint: "Unable to reach the API. Check the server URL and try again.",
+					creatingAccount: "Creating account...",
+					accountCreationFailed: "Account creation failed.",
+					emailSent: "Email Sent",
+					createdRedirecting: "Account created. Redirecting...",
+					requestFailed: "Request failed.",
+				},
+				ko: {
+					title: "계정 만들기",
+					subtitle: "Vault는 종단간 암호화 상태로 유지됩니다. 이 계정은 동기화만 조율합니다.",
+					name: "이름",
+					email: "이메일",
+					password: "비밀번호",
+					submit: "계정 만들기",
+					checkEmail: "이메일을 확인하세요",
+					sentPrefix: "인증 링크를 보냈습니다:",
+					sentSuffix: "",
+					resendVerification: "인증 이메일 다시 보내기",
+					hasAccount: "이미 계정이 있으신가요?",
+					signIn: "로그인",
+					resendAvailableIn: "{seconds}초 후 다시 보낼 수 있습니다",
+					sending: "보내는 중...",
+					failedToResend: "다시 보내지 못했습니다",
+					resent: "인증 이메일을 다시 보냈습니다.",
+					apiUnavailable: "API에 연결할 수 없습니다.",
+					apiUnavailableWithHint: "API에 연결할 수 없습니다. 서버 URL을 확인한 뒤 다시 시도하세요.",
+					creatingAccount: "계정 만드는 중...",
+					accountCreationFailed: "계정을 만들지 못했습니다.",
+					emailSent: "이메일 전송됨",
+					createdRedirecting: "계정이 생성되었습니다. 이동 중...",
+					requestFailed: "요청에 실패했습니다.",
+				},
+				ja: {
+					title: "アカウントを作成",
+					subtitle: "Vaultはエンドツーエンド暗号化されたままです。このアカウントは同期だけを調整します。",
+					name: "名前",
+					email: "メール",
+					password: "パスワード",
+					submit: "アカウントを作成",
+					checkEmail: "メールを確認してください",
+					sentPrefix: "認証リンクを送信しました:",
+					sentSuffix: "",
+					resendVerification: "認証メールを再送信",
+					hasAccount: "すでにアカウントをお持ちですか？",
+					signIn: "サインイン",
+					resendAvailableIn: "{seconds}秒後に再送信できます",
+					sending: "送信中...",
+					failedToResend: "再送信できませんでした",
+					resent: "認証メールを再送信しました。",
+					apiUnavailable: "APIに接続できません。",
+					apiUnavailableWithHint: "APIに接続できません。サーバーURLを確認してから再試行してください。",
+					creatingAccount: "アカウントを作成中...",
+					accountCreationFailed: "アカウントを作成できませんでした。",
+					emailSent: "メールを送信しました",
+					createdRedirecting: "アカウントを作成しました。移動中...",
+					requestFailed: "リクエストに失敗しました。",
+				},
+				"zh-cn": {
+					title: "创建账户",
+					subtitle: "你的 vault 会保持端到端加密。此账户只用于协调同步。",
+					name: "姓名",
+					email: "邮箱",
+					password: "密码",
+					submit: "创建账户",
+					checkEmail: "检查你的邮箱",
+					sentPrefix: "我们已发送验证链接至",
+					sentSuffix: "。",
+					resendVerification: "重新发送验证邮件",
+					hasAccount: "已有账户？",
+					signIn: "登录",
+					resendAvailableIn: "{seconds} 秒后可重新发送",
+					sending: "发送中...",
+					failedToResend: "重新发送失败",
+					resent: "验证邮件已重新发送。",
+					apiUnavailable: "无法连接 API。",
+					apiUnavailableWithHint: "无法连接 API。请检查服务器 URL 后重试。",
+					creatingAccount: "正在创建账户...",
+					accountCreationFailed: "账户创建失败。",
+					emailSent: "邮件已发送",
+					createdRedirecting: "账户已创建。正在跳转...",
+					requestFailed: "请求失败。",
+				},
+				"zh-tw": {
+					title: "建立帳戶",
+					subtitle: "你的 vault 會保持端對端加密。此帳戶只用於協調同步。",
+					name: "姓名",
+					email: "電子郵件",
+					password: "密碼",
+					submit: "建立帳戶",
+					checkEmail: "檢查你的電子郵件",
+					sentPrefix: "我們已傳送驗證連結至",
+					sentSuffix: "。",
+					resendVerification: "重新傳送驗證電子郵件",
+					hasAccount: "已經有帳戶？",
+					signIn: "登入",
+					resendAvailableIn: "{seconds} 秒後可重新傳送",
+					sending: "傳送中...",
+					failedToResend: "重新傳送失敗",
+					resent: "驗證電子郵件已重新傳送。",
+					apiUnavailable: "無法連接 API。",
+					apiUnavailableWithHint: "無法連接 API。請檢查伺服器 URL 後再試一次。",
+					creatingAccount: "正在建立帳戶...",
+					accountCreationFailed: "帳戶建立失敗。",
+					emailSent: "電子郵件已傳送",
+					createdRedirecting: "帳戶已建立。正在前往...",
+					requestFailed: "請求失敗。",
+				},
+			};
+			const locale = getLocale();
+			const form = document.querySelector("#sign-up-form");
+			const status = document.querySelector("#status");
+			const signinLink = document.querySelector("#signin-link");
+			const successContainer = document.querySelector("#success-container");
+			const sentEmailDisplay = document.querySelector("#sent-email-display");
+			const resendButton = document.querySelector("#resend-button");
+			const resendMessage = document.querySelector("#resend-message");
+			let returnTo = "";
+			
+			let isSuccessState = false;
+			let resendCooldown = 0;
+			let resendInterval;
+			let currentEmail = "";
+
+			applyTranslations();
+			void initializePage();
+
+			function startResendCooldown() {
+				if (!resendButton) return;
+				resendCooldown = 30;
+				resendButton.disabled = true;
+				
+				if (resendInterval) clearInterval(resendInterval);
+				
+				resendInterval = setInterval(() => {
+					resendCooldown -= 1;
+					if (resendCooldown <= 0) {
+						clearInterval(resendInterval);
+						resendButton.disabled = false;
+						resendButton.textContent = t("resendVerification");
+					} else {
+						resendButton.textContent = t("resendAvailableIn", { seconds: resendCooldown });
+					}
+				}, 1000);
+			}
+
+			resendButton?.addEventListener("click", async () => {
+				if (resendCooldown > 0 || !currentEmail) return;
+				
+				resendButton.disabled = true;
+				if (resendMessage) {
+					resendMessage.textContent = t("sending");
+					resendMessage.classList.remove("hidden", "text-red-400");
+					resendMessage.classList.add("text-zinc-400");
+				}
+
+				try {
+					const response = await fetch("/api/auth/send-verification-email", {
+						method: "POST",
+						credentials: "include",
+						headers: {
+							"content-type": "application/json",
+						},
+						body: JSON.stringify({ 
+							email: currentEmail,
+							callbackURL: returnTo || "/",
+						}),
+					});
+
+					if (!response.ok) {
+						if (resendMessage) {
+							resendMessage.textContent = await readErrorMessage(response, t("failedToResend"));
+							resendMessage.classList.remove("text-zinc-400");
+							resendMessage.classList.add("text-red-400");
+						}
+						resendButton.disabled = false;
+						return;
+					}
+
+					if (resendMessage) {
+						resendMessage.textContent = t("resent");
+						resendMessage.classList.remove("text-red-400");
+						resendMessage.classList.add("text-zinc-400");
+					}
+					startResendCooldown();
+				} catch {
+					if (resendMessage) {
+						resendMessage.textContent = t("apiUnavailable");
+						resendMessage.classList.remove("text-zinc-400");
+						resendMessage.classList.add("text-red-400");
+					}
+					resendButton.disabled = false;
+				}
+			});
+
+			form?.addEventListener("submit", (event) => {
+				event.preventDefault();
+				void submitAuth();
+			});
+
+			function getLocale() {
+				const params = new URLSearchParams(window.location.search);
+				const candidates = [
+					params.get("lang"),
+					navigator.language,
+				];
+				const selected = candidates.map(normalizeLocale).find(Boolean) || "en";
+				document.documentElement.lang = selected;
+				return selected;
+			}
+
+			function normalizeLocale(candidate) {
+				const locale = candidate?.toLowerCase() || "";
+				if (messages[locale]) return locale;
+				if (locale === "en" || locale.startsWith("en-")) return "en";
+				if (locale === "ko" || locale.startsWith("ko-")) return "ko";
+				if (locale === "ja" || locale.startsWith("ja-")) return "ja";
+				if (locale === "zh-tw" || locale === "zh-hk" || locale === "zh-hant" || locale.startsWith("zh-hant-")) return "zh-tw";
+				if (locale === "zh" || locale === "zh-cn" || locale === "zh-sg" || locale === "zh-hans" || locale.startsWith("zh-hans-")) return "zh-cn";
+				return "";
+			}
+
+			function t(key, params = {}) {
+				const template = messages[locale]?.[key] || messages.en[key] || key;
+				return Object.entries(params).reduce(
+					(text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+					template,
+				);
+			}
+
+			function applyTranslations() {
+				for (const element of document.querySelectorAll("[data-i18n]")) {
+					element.textContent = t(element.dataset.i18n);
+				}
+				document.title = `${t("submit")} - Synch`;
+			}
+
+			async function initializePage() {
+				returnTo = loadReturnTo();
+				if (signinLink && returnTo) {
+					const signinUrl = new URL("/signin", window.location.origin);
+					signinUrl.searchParams.set("return_to", returnTo);
+					signinUrl.searchParams.set("lang", locale);
+					signinLink.href = signinUrl.toString();
+				}
+			}
+
+			function loadReturnTo() {
+				const params = new URLSearchParams(window.location.search);
+				const requested = params.get("return_to") || params.get("callbackURL") || "";
+				const fallback = new URL("/vaults", window.location.origin);
+				fallback.searchParams.set("lang", locale);
+				if (!requested.trim()) {
+					return fallback.toString();
+				}
+
+				try {
+					const parsed = new URL(requested, window.location.href);
+					return parsed.origin === window.location.origin ? parsed.toString() : fallback.toString();
+				} catch {
+					return fallback.toString();
+				}
+			}
+
+			async function submitAuth() {
+				const body = Object.fromEntries(new FormData(form).entries());
+				body.callbackURL = returnTo || "/";
+				setSubmitting(true);
+				setStatus(t("creatingAccount"));
+				try {
+					const response = await fetch("/api/auth/sign-up/email", {
+						method: "POST",
+						credentials: "include",
+						headers: {
+							"content-type": "application/json",
+						},
+						body: JSON.stringify(body),
+					});
+
+					if (!response.ok) {
+						setStatus(await readErrorMessage(response, t("accountCreationFailed")), true);
+						return;
+					}
+
+					const result = await readJson(response);
+					if (result && result.token === null) {
+						isSuccessState = true;
+						setStatus("");
+						
+						for (const element of form.elements) {
+							if (element.id === "resend-button") continue;
+							if (element instanceof HTMLInputElement || element instanceof HTMLButtonElement) {
+								element.disabled = true;
+							}
+						}
+						
+						const submitBtn = form.querySelector('button[type="submit"]');
+						if (submitBtn) {
+							submitBtn.textContent = t("emailSent");
+							submitBtn.classList.remove("bg-zinc-200", "text-[#0a0a0a]", "hover:bg-white");
+							submitBtn.classList.add("bg-zinc-800", "text-zinc-400");
+						}
+
+						currentEmail = body.email;
+						if (sentEmailDisplay) sentEmailDisplay.textContent = currentEmail;
+						
+						if (successContainer) {
+							successContainer.classList.remove("hidden");
+							successContainer.classList.add("flex");
+						}
+						startResendCooldown();
+						return;
+					}
+
+					setStatus(t("createdRedirecting"));
+					window.location.assign(returnTo || "/");
+				} catch {
+					setStatus(t("apiUnavailableWithHint"), true);
+				} finally {
+					setSubmitting(false);
+				}
+			}
+
+			function setStatus(message, isError = false) {
+				if (status.classList.contains("text-red-400")) {
+					status.classList.remove("text-red-400");
+					status.classList.add("text-zinc-400");
+				}
+				status.textContent = message;
+				if (isError) {
+					status.classList.remove("text-zinc-400");
+					status.classList.add("text-red-400");
+				}
+			}
+
+			function setSubmitting(submitting) {
+				if (isSuccessState) return;
+				for (const element of form.elements) {
+					if (element.id === "resend-button") continue;
+					if (element instanceof HTMLInputElement || element instanceof HTMLButtonElement) {
+						element.disabled = submitting;
+					}
+				}
+			}
+
+			async function readErrorMessage(response, fallback = t("requestFailed")) {
+				try {
+					const json = await response.json();
+					return json.message || json.error_description || json.error || fallback;
+				} catch {
+					return fallback;
+				}
+			}
+
+			async function readJson(response) {
+				try {
+					return await response.json();
+				} catch {
+					return null;
+				}
+			}
+		</script>
+	</body>
+</html>

@@ -1,0 +1,135 @@
+import { and, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/durable-sqlite";
+
+import * as doSchema from "../../../db/do";
+
+type CursorDb = Pick<
+	ReturnType<typeof drizzle<typeof doSchema>>,
+	"insert" | "select"
+>;
+
+export type VaultStateLimits = {
+	storageLimitBytes: number;
+	maxFileSizeBytes: number;
+	versionHistoryRetentionDays: number;
+};
+
+export class CoordinatorCursorStore {
+	constructor(private readonly storage: DurableObjectStorage) {}
+
+	currentCursor(): number {
+		return currentCursor(this.getDb());
+	}
+
+	ensureVaultState(vaultId: string, initialLimits: VaultStateLimits): void {
+		ensureVaultState(this.getDb(), vaultId, initialLimits);
+	}
+
+	readVaultId(): string | null {
+		const row = this.getDb()
+			.select({
+				vaultId: doSchema.coordinatorState.vaultId,
+			})
+			.from(doSchema.coordinatorState)
+			.where(eq(doSchema.coordinatorState.id, 1))
+			.limit(1)
+			.get();
+		return row?.vaultId ?? null;
+	}
+
+	recordLocalVaultConnection(userId: string, localVaultId: string): void {
+		recordLocalVaultConnection(this.getDb(), userId, localVaultId, Date.now());
+	}
+
+	deleteLocalVaultConnection(userId: string, localVaultId: string): void {
+		this.getDb()
+			.delete(doSchema.localVaultConnections)
+			.where(
+				and(
+					eq(doSchema.localVaultConnections.userId, userId),
+					eq(doSchema.localVaultConnections.localVaultId, localVaultId),
+				),
+			)
+			.run();
+	}
+
+	currentCursorInTransaction(db: CursorDb): number {
+		return currentCursor(db);
+	}
+
+	private getDb() {
+		return drizzle(this.storage, { schema: doSchema });
+	}
+}
+
+function ensureVaultState(
+	db: CursorDb,
+	vaultId: string,
+	initialLimits: VaultStateLimits,
+): void {
+	const existing = db
+		.select({
+			vaultId: doSchema.coordinatorState.vaultId,
+		})
+		.from(doSchema.coordinatorState)
+		.where(eq(doSchema.coordinatorState.id, 1))
+		.limit(1)
+		.get();
+	if (existing) {
+		if (existing.vaultId !== vaultId) {
+			throw new Error("durable object vault id mismatch");
+		}
+		return;
+	}
+
+	db.insert(doSchema.coordinatorState)
+		.values({
+			id: 1,
+			vaultId,
+			currentCursor: 0,
+			storageLimitBytes: initialLimits.storageLimitBytes,
+			maxFileSizeBytes: initialLimits.maxFileSizeBytes,
+			versionHistoryRetentionDays: initialLimits.versionHistoryRetentionDays,
+		})
+		.run();
+}
+
+function currentCursor(db: CursorDb): number {
+	const state = db
+		.select({
+			cursor: doSchema.coordinatorState.currentCursor,
+		})
+		.from(doSchema.coordinatorState)
+		.where(eq(doSchema.coordinatorState.id, 1))
+		.limit(1)
+		.get();
+	if (state) {
+		return Number(state.cursor);
+	}
+
+	throw new Error("vault sync state is not initialized");
+}
+
+function recordLocalVaultConnection(
+	db: CursorDb,
+	userId: string,
+	localVaultId: string,
+	lastConnectedAt: number,
+): void {
+	db.insert(doSchema.localVaultConnections)
+		.values({
+			userId,
+			localVaultId,
+			lastConnectedAt,
+		})
+		.onConflictDoUpdate({
+			target: [
+				doSchema.localVaultConnections.userId,
+				doSchema.localVaultConnections.localVaultId,
+			],
+			set: {
+				lastConnectedAt,
+			},
+		})
+		.run();
+}
